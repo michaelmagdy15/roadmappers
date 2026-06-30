@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { db, users, sessions, onboardingProfiles } from '@/db';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
 
@@ -20,6 +20,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    const codeVerifier = request.cookies.get('whop_oauth_code_verifier')?.value;
+
     // 1. Exchange authorization code for access token
     const tokenResponse = await fetch('https://api.whop.com/oauth/token', {
       method: 'POST',
@@ -32,6 +34,7 @@ export async function GET(request: Request) {
         redirect_uri: redirectUri,
         client_id: clientId,
         client_secret: clientSecret,
+        code_verifier: codeVerifier,
       }),
     });
 
@@ -105,9 +108,26 @@ export async function GET(request: Request) {
       expiresAt,
     });
 
-    // 5. Set session cookie and redirect
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    // 5. Determine redirect path and construct response
+    let redirectUrl = '/dashboard';
+    if (isNewUser) {
+      const userRole = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0]?.role;
+      if (userRole === 'student') {
+        redirectUrl = '/onboarding';
+      }
+    } else {
+      const user = existingUser[0];
+      if (user?.role === 'student') {
+        const onboarding = await db.select().from(onboardingProfiles).where(eq(onboardingProfiles.userId, userId)).limit(1);
+        if (onboarding.length === 0) {
+          redirectUrl = '/onboarding';
+        }
+      }
+    }
+
+    const response = NextResponse.redirect(new URL(redirectUrl, request.url));
     
+    // Set session cookie
     response.cookies.set('session_id', sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -116,30 +136,8 @@ export async function GET(request: Request) {
       path: '/',
     });
 
-    // If new user and student, redirect to onboarding diagnostic survey
-    if (isNewUser) {
-      const userRole = isNewUser ? (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0]?.role : 'student';
-      if (userRole === 'student') {
-        return NextResponse.redirect(new URL('/onboarding', request.url));
-      }
-    } else {
-      // Check if student has already completed onboarding
-      const user = existingUser[0];
-      if (user?.role === 'student') {
-        const onboarding = await db.select().from(onboardingProfiles).where(eq(onboardingProfiles.userId, userId)).limit(1);
-        if (onboarding.length === 0) {
-          const redirectResponse = NextResponse.redirect(new URL('/onboarding', request.url));
-          redirectResponse.cookies.set('session_id', sessionId, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 30 * 24 * 60 * 60,
-            path: '/',
-          });
-          return redirectResponse;
-        }
-      }
-    }
+    // Delete temporary PKCE cookie
+    response.cookies.delete('whop_oauth_code_verifier');
 
     return response;
   } catch (error) {
