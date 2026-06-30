@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Helper to base64url encode a buffer
-function base64UrlEncode(buffer: Buffer): string {
-  return buffer.toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
 export async function GET(request: Request) {
   const clientId = process.env.WHOP_CLIENT_ID;
   const redirectUri = process.env.WHOP_REDIRECT_URI;
@@ -22,15 +14,15 @@ export async function GET(request: Request) {
     return new NextResponse('Whop configuration is missing on the server.', { status: 500 });
   }
 
-  // 1. Generate PKCE verifier and challenge
+  // 1. Generate PKCE verifier and challenge using native base64url encoding
   const verifierBytes = crypto.randomBytes(32);
-  const codeVerifier = base64UrlEncode(verifierBytes);
+  const codeVerifier = verifierBytes.toString('base64url');
 
   const challengeHash = crypto.createHash('sha256').update(codeVerifier).digest();
-  const codeChallenge = base64UrlEncode(challengeHash);
+  const codeChallenge = challengeHash.toString('base64url');
 
-  // 2. Build Whop OAuth URL with PKCE parameters
-  const authUrl = `https://whop.com/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+  // 2. Build Whop OAuth URL using the official Whop OAuth 2.1 authorization endpoint
+  const authUrl = `https://api.whop.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
     redirectUri
   )}&response_type=code&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
