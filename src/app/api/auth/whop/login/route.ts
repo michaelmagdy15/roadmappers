@@ -21,14 +21,17 @@ export async function GET(request: Request) {
   const challengeHash = crypto.createHash('sha256').update(codeVerifier).digest();
   const codeChallenge = challengeHash.toString('base64url');
 
-  // 2. Build Whop OAuth URL using the official Whop OAuth 2.1 authorization endpoint
+  // 2. Generate a random nonce for OIDC security
+  const nonce = crypto.randomBytes(16).toString('hex');
+
+  // 3. Build Whop OAuth URL using the official Whop OAuth 2.1 authorization endpoint with scope
   const authUrl = `https://api.whop.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
     redirectUri
-  )}&response_type=code&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+  )}&response_type=code&code_challenge=${codeChallenge}&code_challenge_method=S256&scope=openid%20email&nonce=${nonce}`;
 
   const response = NextResponse.redirect(authUrl);
 
-  // 3. Save code verifier in a secure HTTP-only cookie
+  // 4. Save code verifier in a secure HTTP-only cookie
   response.cookies.set('whop_oauth_code_verifier', codeVerifier, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
