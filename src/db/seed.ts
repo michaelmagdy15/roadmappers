@@ -80,7 +80,6 @@ async function seed() {
           'document.querySelectorAll("#id")'
         ]),
         correctOptionIndex: 1,
-        createdAt: Date.now(),
       },
       {
         id: 'q_free_2',
@@ -93,7 +92,6 @@ async function seed() {
           'change'
         ]),
         correctOptionIndex: 0,
-        createdAt: Date.now(),
       }
     ]).onConflictDoNothing();
 
@@ -166,7 +164,6 @@ async function seed() {
           '"use api"'
         ]),
         correctOptionIndex: 0,
-        createdAt: Date.now(),
       },
       {
         id: 'q_prem_2',
@@ -179,7 +176,6 @@ async function seed() {
           'It can be imported if you configure next.config.ts'
         ]),
         correctOptionIndex: 1,
-        createdAt: Date.now(),
       }
     ]).onConflictDoNothing();
 
