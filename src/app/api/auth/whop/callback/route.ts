@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const allCookies = request.cookies.getAll().map(c => c.name);
     const codeVerifier = request.cookies.get('whop_oauth_code_verifier')?.value;
+    
+    console.log('OAuth Callback - All Cookies:', allCookies);
+    console.log('OAuth Callback - Extracted Code Verifier:', codeVerifier ? `${codeVerifier.substring(0, 5)}...` : 'undefined');
 
     // 1. Exchange authorization code for access token
     const tokenResponse = await fetch('https://api.whop.com/oauth/token', {
