@@ -1,0 +1,7 @@
+*.md
+public/
+*.db
+graphify-out/
+.next/
+node_modules/
+package-lock.json

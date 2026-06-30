@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local sqlite db
+local.db
+local.db-journal
+
+# graphify
+graphify-out/
